@@ -154,7 +154,17 @@ function classifyEmail_(subject, body) {
     throw new Error('Claude APIエラー (HTTP ' + code + '): ' + response.getContentText());
   }
 
-  var text = JSON.parse(response.getContentText()).content[0].text;
+  // 応答の先頭が text ブロックとは限らない（thinking 等が先に来る場合がある）ため、
+  // type が text のブロックを連結して取り出す
+  var content = JSON.parse(response.getContentText()).content || [];
+  var text = content.filter(function (block) {
+    return block.type === 'text' && block.text;
+  }).map(function (block) {
+    return block.text;
+  }).join('');
+  if (!text) {
+    throw new Error('Claudeの応答にテキストが含まれていません: ' + response.getContentText());
+  }
   // 余計な文字が付いていても最初のJSONオブジェクトを取り出す
   var match = text.match(/\{[\s\S]*\}/);
   if (!match) {
